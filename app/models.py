@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, Computed
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from pgvector.sqlalchemy import Vector
 from app.database import Base
+
 
 class Filing(Base):
     __tablename__ = "filings"
@@ -13,6 +15,11 @@ class Filing(Base):
     # Using 3072 dimensions for Gemini embeddings (embedding-001)
     # Adjust dimension if using a different model
     embedding = Column(Vector(3072))
+    
+    # Full text search vector
+    # 'english' configuration is standard
+    search_vector = Column(TSVECTOR)
+
 
     def __repr__(self):
         return f"<Filing(ticker={self.ticker}, year={self.year}, chunk={self.chunk_index})>"

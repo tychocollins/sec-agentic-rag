@@ -7,3 +7,6 @@ pgvector
 google-generativeai
 pydantic-settings
 python-dotenv
+sec-edgar-downloader
+beautifulsoup4
+

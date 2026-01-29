@@ -18,9 +18,12 @@ class ReviewerAgent:
 
         Instructions:
         1. Check if all numbers (revenue, EPS, dates, etc.) in the answer appear in the Context.
-        2. If the answer is correct and supported, return it as is.
-        3. If there are discrepancies or unsupported claims, correct the answer to ONLY state what is in the Context.
-        4. If the context does not contain the answer, state that the information is not found in the provided text.
+        2. Recognize synonyms: "Revenue" is the same as "Net Sales" or "Total Sales".
+        3. Calculations: If the answer uses a tool-derived calculation (like growth %), verify that the *raw numbers* used for the calculation are in the context.
+        4. If the answer is correct and supported, return it as is.
+        5. If there are discrepancies or unsupported claims, correct the answer to ONLY state what is in the Context.
+        6. If the context does not contain the answer, state that the information is not found in the provided text.
+
 
         Return ONLY the final corrected answer.
         """

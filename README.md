@@ -37,3 +37,17 @@ Open your browser to **[http://localhost:8000/docs](http://localhost:8000/docs)*
 ## Troubleshooting
 - **"Address already in use"**: This means the server is already running! You don't need to start it again.
 - **Docker**: Ensure Docker Desktop is running (`docker compose up -d`).
+
+## Running the Web App (Frontend)
+
+To start the chat interface with a fixed URL:
+
+1.  Navigate to the frontend folder:
+    ```bash
+    cd frontend
+    ```
+2.  Run Flutter Web Server (Stable):
+    ```bash
+    flutter run -d web-server --web-port 3000
+    ```
+3.  Open your browser to: **[http://127.0.0.1:3000](http://127.0.0.1:3000)**
