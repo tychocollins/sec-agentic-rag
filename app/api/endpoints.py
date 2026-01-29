@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
+import asyncio
+import json
 
 from app.database import get_db
 from app.schemas import AnalysisRequest, AnalysisResponse
@@ -17,101 +20,88 @@ from app.agents.classifier import ClassifierAgent
 from app.agents.analyst import AnalystAgent
 from app.services.ingestion_service import IngestionService
 
-@router.post("/analyze", response_model=AnalysisResponse)
+@router.post("/analyze")
 async def analyze_filing(request: AnalysisRequest, db: AsyncSession = Depends(get_db)):
-    # 0. Classify / Extract Metadata
-    tickers = [request.ticker] if request.ticker else None
-    year = request.year
-    
-    if not tickers or not year:
-        classifier = ClassifierAgent()
-        metadata = await classifier.classify(request.user_input)
-        if not tickers:
-            tickers = metadata.get("tickers") or [metadata.get("ticker", "UNKNOWN")]
-        if not year:
-            year = metadata.get("year", 2023)
-            
-    # Use user_input as the question if not explicitly provided
-    question_text = request.question if request.question else request.user_input
-
-    # 1. AUTO-INGEST CHECK
-    ingester = IngestionService(db)
-    for ticker in tickers:
-        if ticker != "UNKNOWN":
-            await ingester.ingest_if_missing(ticker, year)
-
-    # 2. Plan
-    planner = PlannerAgent()
-    steps = await planner.plan(question_text)
-    
-    # 3. Search & Context Accumulation
-    search_agent = SearchAgent(db)
-    
-    # Run searches. If a step mentions a specific company, only search that company.
-    # Otherwise, search all tickers.
-    search_tasks = []
-    import asyncio
-    
-    for step in steps:
-        step_lower = step.lower()
-        target_tickers = []
+    async def event_generator():
+        # 0. Classify / Extract Metadata
+        tickers = [request.ticker] if request.ticker else None
+        year = request.year
         
-        # Simple heuristic: if step mentions a ticker or company name, target it
-        for t in tickers:
-            if t.lower() in step_lower:
-                target_tickers.append(t)
+        if not tickers or not year:
+            classifier = ClassifierAgent()
+            metadata = await classifier.classify(request.user_input)
+            if not tickers:
+                tickers = metadata.get("tickers") or [metadata.get("ticker", "UNKNOWN")]
+            if not year:
+                year = metadata.get("year", 2023)
+                
+        # Use user_input as the question if not explicitly provided
+        question_text = request.question if request.question else request.user_input
+
+        # 1. AUTO-INGEST CHECK
+        ingester = IngestionService(db)
+        for ticker in tickers:
+            if ticker != "UNKNOWN":
+                await ingester.ingest_if_missing(ticker, year)
+
+        # 2. Plan
+        planner = PlannerAgent()
+        steps = await planner.plan(question_text)
         
-        # If no specific ticker found in step, or multiple found, search all
-        if not target_tickers:
-            target_tickers = tickers
-            
-        for t in target_tickers:
-            search_tasks.append(search_agent.search(step, t, year, limit=10))
-    
-    # Run searches in parallel to cut processing time
-    if search_tasks:
-        try:
+        # 3. Search & Context Accumulation
+        search_agent = SearchAgent(db)
+        search_tasks = []
+        
+        for step in steps:
+            step_lower = step.lower()
+            target_tickers = []
+            for t in tickers:
+                if t.lower() in step_lower:
+                    target_tickers.append(t)
+            if not target_tickers:
+                target_tickers = tickers
+            for t in target_tickers:
+                search_tasks.append(search_agent.search(step, t, year, limit=3)) # Optimized limit
+        
+        if search_tasks:
             all_results = await asyncio.gather(*search_tasks)
-        except Exception as e:
-            print(f"Error during parallel search: {e}")
+        else:
             all_results = []
-    else:
-        all_results = []
 
+        all_context = []
+        for results in all_results:
+            for res in results:
+                 context_entry = f"[{res.ticker} {res.year}] {res.text_content}"
+                 if context_entry not in all_context:
+                     all_context.append(context_entry)
+        
+        if not all_context:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'No relevant information found'})}\n\n"
+            return
 
-    all_context = []
-    for results in all_results:
-        for res in results:
-             # Prepend ticker/year to context so Analyst knows whose data it is
-             context_entry = f"[{res.ticker} {res.year}] {res.text_content}"
-             if context_entry not in all_context:
-                 all_context.append(context_entry)
-    
-    if not all_context:
-        return AnalysisResponse(
-            answer="No relevant information found in the filings for " + ", ".join(tickers),
-            steps=steps,
-            context_used=[],
-            ticker_used=", ".join(tickers),
-            year_used=year
-        )
+        # Send metadata event
+        metadata_payload = {
+            "type": "metadata",
+            "steps": steps,
+            "ticker_used": ", ".join(tickers),
+            "year_used": year,
+            "context_used": all_context[:3] # Pass a few for citations
+        }
+        yield f"data: {json.dumps(metadata_payload)}\n\n"
 
-    # 4. Generate Initial Answer (Analyst with Tools)
-    analyst = AnalystAgent()
-    context_str = "\n".join(all_context)
-    initial_answer = await analyst.analyze(question_text, context_str)
+        # 4. Generate Initial Answer
+        analyst = AnalystAgent()
+        context_str = "\n".join(all_context)
+        initial_answer = await analyst.analyze(question_text, context_str)
 
-    # 5. Review & Verify
-    reviewer = ReviewerAgent()
-    final_answer = await reviewer.review(question_text, initial_answer, all_context)
-    
-    return AnalysisResponse(
-        answer=final_answer,
-        steps=steps,
-        context_used=all_context[:5], # Return top 5 contexts used for transparency
-        ticker_used=", ".join(tickers),
-        year_used=year
-    )
+        # 5. Review & Verify (STREAMING)
+        reviewer = ReviewerAgent()
+        async for token in reviewer.stream_review(question_text, initial_answer, all_context):
+            yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
+        
+        yield "data: {\"type\": \"done\"}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 class IngestRequest(BaseModel):

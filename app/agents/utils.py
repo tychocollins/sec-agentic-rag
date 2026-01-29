@@ -39,6 +39,25 @@ class RetryingGenerativeModel:
                 print(f"Rate limited, waiting {wait_time}s before retry {attempt + 1}/{retries}...")
                 await asyncio.sleep(wait_time)
 
+    async def generate_content_stream_async(self, *args, **kwargs):
+        """Streaming version with retries"""
+        retries = 3
+        delay = 2
+        
+        if 'request_options' not in kwargs:
+            kwargs['request_options'] = RequestOptions(timeout=REQUEST_TIMEOUT)
+            
+        for attempt in range(retries):
+            try:
+                async for chunk in await self._model.generate_content_async(*args, stream=True, **kwargs):
+                    yield chunk
+                return # Success
+            except exceptions.ResourceExhausted:
+                if attempt == retries - 1:
+                    raise
+                wait_time = delay * (2 ** attempt)
+                await asyncio.sleep(wait_time)
+
     def __getattr__(self, name):
         return getattr(self._model, name)
 

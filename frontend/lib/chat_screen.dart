@@ -231,31 +231,43 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _startProgressAnimation();
 
     try {
-      final response = await _apiService.analyze(text);
-      final citations = List<String>.from(response['context_used'] ?? []);
+      int? agentMsgIndex;
       
-      setState(() {
-        _messages.add({
-          'role': 'agent',
-          'answer': response['answer'] ?? "No answer received.",
-          'ticker': response['ticker_used'] ?? "?",
-          'year': response['year_used'] ?? 2023,
-          'citations': citations,
-          'showCitations': false,
-        });
-        
-        // Update Quick Facts - add API ticker if not already detected
-        _currentTicker = response['ticker_used'];
-        _currentYear = response['year_used'];
-        if (_currentTicker != null && 
-            _companyQuickFacts.containsKey(_currentTicker) &&
-            !_comparisonTickers.contains(_currentTicker)) {
-          if (_comparisonTickers.isEmpty) {
-            _comparisonTickers = [_currentTicker!];
-          }
+      await for (final event in _apiService.analyzeStream(text)) {
+        if (event['type'] == 'metadata') {
+          setState(() {
+            agentMsgIndex = _messages.length;
+            _messages.add({
+              'role': 'agent',
+              'answer': '',
+              'ticker': event['ticker_used'] ?? "?",
+              'year': event['year_used'] ?? 2023,
+              'citations': List<String>.from(event['context_used'] ?? []),
+              'showCitations': false,
+            });
+            
+            // Update Quick Facts
+            _currentTicker = event['ticker_used'];
+            _currentYear = event['year_used'];
+            if (_currentTicker != null && 
+                _companyQuickFacts.containsKey(_currentTicker) &&
+                !_comparisonTickers.contains(_currentTicker)) {
+              if (_comparisonTickers.isEmpty) {
+                _comparisonTickers = [_currentTicker!];
+              }
+            }
+          });
+        } else if (event['type'] == 'token' && agentMsgIndex != null) {
+          setState(() {
+            _messages[agentMsgIndex!]['answer'] += event['text'];
+          });
+          _scrollToBottom();
+        } else if (event['type'] == 'error') {
+          throw Exception(event['message']);
+        } else if (event['type'] == 'done') {
+          _stopProgressAnimation(completed: true);
         }
-      });
-      _stopProgressAnimation(completed: true);
+      }
     } catch (e) {
       setState(() {
         _messages.add({
