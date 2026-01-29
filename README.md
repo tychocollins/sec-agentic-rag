@@ -1,53 +1,126 @@
 # SEC Agent RAG
 
-An Agentic RAG pipeline for analyzing SEC 10-K filings using **Gemini 3** and **Postgres via pgvector**.
+An intelligent, agentic RAG pipeline for analyzing SEC 10-K filings using **Gemini** and **PostgreSQL + pgvector**.
 
-## Status
-The server is likely **already running** on your machine (Port 8000).
+## ✨ Key Features
 
-## Usage
+| Feature | Description |
+| :--- | :--- |
+| **Auto-Ingestion** | Ask about any company—filings are downloaded from SEC EDGAR automatically |
+| **Multi-Company Comparison** | Compare metrics across multiple companies (e.g., "Compare Apple and Microsoft revenue") |
+| **Year Precision** | Parses SEC headers to ensure correct fiscal year data |
+| **Financial Data Boost** | Prioritizes chunks with actual financial data (`$`, income statements) |
+| **Hybrid Search** | Combines vector search + keyword search with RRF ranking |
+| **Flutter Chat UI** | Modern web interface for financial Q&A |
 
-### 1. Ingest Data
-Before analyzing, you need to load data into the database.
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker Desktop (running)
+- Python 3.11+
+- Flutter SDK (for frontend)
+
+### 1. Start Services
 ```bash
-curl -X POST "http://localhost:8000/ingest" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "ticker": "AAPL",
-           "year": 2023,
-           "text": "Apple Inc. reported total net sales of $383,285 million for 2023."
-         }'
+docker compose up -d
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 2. Analyze (Ask a Question)
-The **Planner Agent** will break down your question, the **Search Agent** will find data, and the **Reviewer Agent** will verify the answer.
+### 2. (Optional) Bulk Ingest Companies
+Pre-load data for faster queries:
+```bash
+python bulk_ingest.py AAPL,MSFT,GOOGL,AMZN,META,TSLA --year 2023
+```
+
+### 3. Ask Questions
 ```bash
 curl -X POST "http://localhost:8000/analyze" \
      -H "Content-Type: application/json" \
-     -d '{
-           "ticker": "AAPL",
-           "year": 2023,
-           "question": "What was the total net sales?"
-         }'
+     -d '{"user_input": "What was Apple revenue in 2023?"}'
 ```
 
-### 3. Interactive UI
-Open your browser to **[http://localhost:8000/docs](http://localhost:8000/docs)** to use the generic Swagger UI.
+### 4. Run the Chat UI
+```bash
+cd frontend
+flutter run -d web-server --web-port 3000
+```
+Open **[http://127.0.0.1:3000](http://127.0.0.1:3000)**
 
-## Troubleshooting
-- **"Address already in use"**: This means the server is already running! You don't need to start it again.
-- **Docker**: Ensure Docker Desktop is running (`docker compose up -d`).
+## 🏗️ Architecture
 
-## Running the Web App (Frontend)
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Flutter UI  │────▶│  FastAPI     │────▶│  PostgreSQL  │
+│  (Port 3000) │     │  (Port 8000) │     │  + pgvector  │
+└──────────────┘     └──────────────┘     └──────────────┘
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+        ┌──────────┐  ┌──────────┐  ┌──────────┐
+        │ Planner  │  │  Search  │  │ Reviewer │
+        │  Agent   │  │  Agent   │  │  Agent   │
+        └──────────┘  └──────────┘  └──────────┘
+              │             │             │
+              └─────────────┴─────────────┘
+                            │
+                    ┌───────▼───────┐
+                    │    Gemini     │
+                    │   (LLM API)   │
+                    └───────────────┘
+```
 
-To start the chat interface with a fixed URL:
+### Agents
+- **ClassifierAgent**: Extracts tickers and years from natural language
+- **PlannerAgent**: Breaks complex questions into sub-queries
+- **SearchAgent**: Hybrid search with financial data boosting
+- **AnalystAgent**: Synthesizes answers from retrieved context
+- **ReviewerAgent**: Validates answers against source data
 
-1.  Navigate to the frontend folder:
-    ```bash
-    cd frontend
-    ```
-2.  Run Flutter Web Server (Stable):
-    ```bash
-    flutter run -d web-server --web-port 3000
-    ```
-3.  Open your browser to: **[http://127.0.0.1:3000](http://127.0.0.1:3000)**
+## 📊 Verified Companies
+
+| Company | Ticker | 2023 Data |
+| :--- | :--- | :--- |
+| Apple | AAPL | ✅ $383,285M revenue |
+| Microsoft | MSFT | ✅ $211,915M revenue |
+| Meta | META | ✅ $39,098M net income |
+| Tesla | TSLA | ✅ $3,969M R&D |
+| Amazon | AMZN | ✅ $30,425M net income |
+| Google | GOOGL | ✅ $73,795M net income |
+
+## 🔧 Environment Variables
+
+Create a `.env` file:
+```env
+GEMINI_API_KEY=your-api-key
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/sec_rag
+SEC_COMPANY=YourCompany
+SEC_EMAIL=your@email.com
+```
+
+## 📁 Project Structure
+
+```
+sec-agent-rag/
+├── app/
+│   ├── agents/          # AI agents (planner, search, reviewer, etc.)
+│   ├── api/             # FastAPI endpoints
+│   ├── services/        # SEC download & ingestion
+│   └── models.py        # SQLAlchemy models
+├── frontend/            # Flutter chat UI
+├── sec_downloads/       # Cached SEC filings
+├── bulk_ingest.py       # CLI for batch ingestion
+└── docker-compose.yml   # PostgreSQL + pgvector
+```
+
+## 🐛 Troubleshooting
+
+| Issue | Solution |
+| :--- | :--- |
+| "Address already in use" | Server is already running |
+| "No data found" | Run `python bulk_ingest.py TICKER --year YEAR` |
+| Docker not running | Start Docker Desktop |
+
+## License
+
+MIT
