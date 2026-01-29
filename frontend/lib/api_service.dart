@@ -17,7 +17,7 @@ class ApiService {
         body: jsonEncode({
           'user_input': userInput,
         }),
-      ).timeout(const Duration(minutes: 2));
+      ).timeout(const Duration(minutes: 5)); // Extended timeout for complex comparison queries
 
 
       if (response.statusCode == 200) {

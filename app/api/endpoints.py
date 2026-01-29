@@ -66,9 +66,18 @@ async def analyze_filing(request: AnalysisRequest, db: AsyncSession = Depends(ge
             target_tickers = tickers
             
         for t in target_tickers:
-            search_tasks.append(search_agent.search(step, t, year, limit=10)) # Increase limit for better coverage
-            
-    all_results = await asyncio.gather(*search_tasks)
+            search_tasks.append(search_agent.search(step, t, year, limit=10))
+    
+    # Run searches in parallel to cut processing time
+    if search_tasks:
+        try:
+            all_results = await asyncio.gather(*search_tasks)
+        except Exception as e:
+            print(f"Error during parallel search: {e}")
+            all_results = []
+    else:
+        all_results = []
+
 
     all_context = []
     for results in all_results:

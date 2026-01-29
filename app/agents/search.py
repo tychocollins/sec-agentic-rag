@@ -3,6 +3,7 @@ from sqlalchemy import select, text
 from app.models import Filing
 from app.agents.utils import get_embedding
 import re
+import asyncio
 
 
 class SearchAgent:
@@ -85,3 +86,12 @@ class SearchAgent:
         
         # Return top N
         return [x["item"] for x in sorted_items[:limit]]
+
+    async def search_multi(self, query: str, tickers: list[str], year: int, limit: int = 5) -> dict[str, list[Filing]]:
+        """
+        Performs parallel search for multiple tickers using asyncio.gather.
+        Useful for comparison queries.
+        """
+        tasks = [self.search(query, ticker, year, limit) for ticker in tickers]
+        results = await asyncio.gather(*tasks)
+        return dict(zip(tickers, results))

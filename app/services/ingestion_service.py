@@ -1,5 +1,7 @@
 import re
 import os
+import time
+import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models import Filing
@@ -36,6 +38,10 @@ class IngestionService:
         chunks = self.smart_chunk(clean_text)
         
         for i, chunk in enumerate(chunks):
+            # Rate limit: 2s delay between embeddings to stay under Gemini free tier limits
+            if i > 0:
+                await asyncio.sleep(2)
+            
             embedding = await get_embedding(chunk)
             filing = Filing(
                 ticker=ticker,
@@ -45,6 +51,9 @@ class IngestionService:
                 embedding=embedding
             )
             self.db.add(filing)
+            
+            if (i + 1) % 10 == 0:
+                print(f"  Embedded {i + 1}/{len(chunks)} chunks...")
         
         await self.db.commit()
         print(f"Successfully ingested {len(chunks)} chunks for {ticker} {year}.")
