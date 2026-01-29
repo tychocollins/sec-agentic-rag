@@ -1,81 +1,99 @@
-# SEC Agent RAG
+# SEC Agentic RAG
 
-An intelligent, agentic RAG pipeline for analyzing SEC 10-K filings using **Gemini** and **PostgreSQL + pgvector**.
+An enterprise-grade, agentic RAG pipeline for deep analysis of SEC 10-K filings. Built with **Gemini**, **PostgreSQL + pgvector**, and **Flutter**, this system moves beyond simple retrieval to provide high-fidelity financial insights and multi-company comparisons.
 
-## ✨ Key Features
+## 🚀 Key Technical Achievements
 
-| Feature | Description |
+### 🏎️ Parallel Multi-Agent Search
+Unlike standard RAG pipelines that fetch context sequentially, this system implements a **Parallel Multi-Agent Search** architecture. 
+- **Simultaneous Retrieval**: For complex comparison queries (e.g., "Apple vs Tesla"), the backend triggers independent search agents for each entity concurrently using `asyncio.gather`.
+- **Latency Reduction**: This approach cuts total processing time by up to 50% for multi-ticker analysis by eliminating sequential I/O bottlenecks.
+
+### 📈 Non-Linear "Deep Work" Progress UI
+To manage user expectations during long-running, multi-step agentic reasoning (which can take up to 5 minutes), we developed a custom **Non-Linear Progress Indicator** in Flutter.
+- **Psychological Speed**: The progress bar jumps to 30% in the first 5 seconds to provide immediate feedback.
+- **Expected Delay**: It then moves into a "crawl" state (30% to 90% over 3 minutes) during heavy cross-analysis blocks.
+- **Sticky Status States**: Instead of looping animations, the UI displays discrete reasoning steps (1-7) that "stick" during processing, providing a transparent look into the Analyst's effort.
+
+---
+
+## ✨ Core Features
+
+| Feature | Technical Implementation |
 | :--- | :--- |
-| **Auto-Ingestion** | Ask about any company—filings are downloaded from SEC EDGAR automatically |
-| **Multi-Company Comparison** | Compare metrics across multiple companies (e.g., "Compare Apple and Microsoft revenue") |
-| **Year Precision** | Parses SEC headers to ensure correct fiscal year data |
-| **Financial Data Boost** | Prioritizes chunks with actual financial data (`$`, income statements) |
-| **Hybrid Search** | Combines vector search + keyword search with RRF ranking |
-| **Flutter Chat UI** | Modern web interface for financial Q&A |
+| **Auto-Ingestion** | Real-time downloading and processing of 10-K filings from SEC EDGAR. |
+| **Hybrid Search** | Reciprocal Rank Fusion (RRF) combining Vector Search with Keyword (`tsvector`) ranking. |
+| **Financial Boosting** | Heuristic re-ranking that prioritizes chunks containing financial tables and dollar-denominated metrics. |
+| **Multi-Agent Reasoning** | A pipeline of **Planner**, **Searcher**, and **Reviewer** agents ensuring grounded, verified answers. |
 
-## 🚀 Quick Start
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    UI[Flutter Professional UI] --> API[FastAPI Orchestrator]
+    API --> Ingest[Ingestion Service]
+    API --> Planner[Planner Agent]
+    
+    subgraph "Parallel Search Core"
+        Planner --> S1[Search Agent: Ticker A]
+        Planner --> S2[Search Agent: Ticker B]
+        S1 --> DB[(PostgreSQL + pgvector)]
+        S2 --> DB
+    end
+    
+    DB --> Analyst[Analyst Agent]
+    Analyst --> Reviewer[Reviewer Agent]
+    Reviewer --> API
+    API --> UI
+```
+
+## 🛠️ Installation & Setup
 
 ### Prerequisites
-- Docker Desktop (running)
-- Python 3.11+
-- Flutter SDK (for frontend)
+- **Docker Desktop** (for pgvector database)
+- **Python 3.11+**
+- **Flutter SDK**
 
-### 1. Start Services
+### 1. Environment Configuration
+Create a `.env` file in the root directory:
+```env
+GEMINI_API_KEY=your-api-key
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
+POSTGRES_DB=sec_filings
+SEC_COMPANY=YourName
+SEC_EMAIL=your@email.com
+```
+
+### 2. Infrastructure Setup
 ```bash
+# Start the Vector Database
 docker compose up -d
+
+# Install Dependencies
 pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Start Backend
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. (Optional) Bulk Ingest Companies
-Pre-load data for faster queries:
-```bash
-python bulk_ingest.py AAPL,MSFT,GOOGL,AMZN,META,TSLA --year 2023
-```
-
-### 3. Ask Questions
-```bash
-curl -X POST "http://localhost:8000/analyze" \
-     -H "Content-Type: application/json" \
-     -d '{"user_input": "What was Apple revenue in 2023?"}'
-```
-
-### 4. Run the Chat UI
+### 3. Launch Frontend
 ```bash
 cd frontend
 flutter run -d web-server --web-port 3000
 ```
-Open **[http://127.0.0.1:3000](http://127.0.0.1:3000)**
+Visit **[localhost:3000](http://localhost:3000)** to start analyzing.
 
-## 🏗️ Architecture
+---
 
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Flutter UI  │────▶│  FastAPI     │────▶│  PostgreSQL  │
-│  (Port 3000) │     │  (Port 8000) │     │  + pgvector  │
-└──────────────┘     └──────────────┘     └──────────────┘
-                            │
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-        ┌──────────┐  ┌──────────┐  ┌──────────┐
-        │ Planner  │  │  Search  │  │ Reviewer │
-        │  Agent   │  │  Agent   │  │  Agent   │
-        └──────────┘  └──────────┘  └──────────┘
-              │             │             │
-              └─────────────┴─────────────┘
-                            │
-                    ┌───────▼───────┐
-                    │    Gemini     │
-                    │   (LLM API)   │
-                    └───────────────┘
-```
+## 📁 System Design
 
-### Agents
-- **ClassifierAgent**: Extracts tickers and years from natural language
-- **PlannerAgent**: Breaks complex questions into sub-queries
-- **SearchAgent**: Hybrid search with financial data boosting
-- **AnalystAgent**: Synthesizes answers from retrieved context
-- **ReviewerAgent**: Validates answers against source data
+- **`app/agents/`**: Core multi-agent logic (Planner, Analyst, Reviewer).
+- **`app/services/`**: Secure SEC downloading and advanced chunking with rate-limit buffers.
+- **`frontend/`**: Premium Flutter interface with custom animations and high-contrast light theme.
+- **`bulk_ingest.py`**: CLI utility for pre-loading entire ticker universes.
 
 ## 📊 Verified Companies
 
@@ -88,39 +106,5 @@ Open **[http://127.0.0.1:3000](http://127.0.0.1:3000)**
 | Amazon | AMZN | ✅ $30,425M net income |
 | Google | GOOGL | ✅ $73,795M net income |
 
-## 🔧 Environment Variables
-
-Create a `.env` file:
-```env
-GEMINI_API_KEY=your-api-key
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/sec_rag
-SEC_COMPANY=YourCompany
-SEC_EMAIL=your@email.com
-```
-
-## 📁 Project Structure
-
-```
-sec-agent-rag/
-├── app/
-│   ├── agents/          # AI agents (planner, search, reviewer, etc.)
-│   ├── api/             # FastAPI endpoints
-│   ├── services/        # SEC download & ingestion
-│   └── models.py        # SQLAlchemy models
-├── frontend/            # Flutter chat UI
-├── sec_downloads/       # Cached SEC filings
-├── bulk_ingest.py       # CLI for batch ingestion
-└── docker-compose.yml   # PostgreSQL + pgvector
-```
-
-## 🐛 Troubleshooting
-
-| Issue | Solution |
-| :--- | :--- |
-| "Address already in use" | Server is already running |
-| "No data found" | Run `python bulk_ingest.py TICKER --year YEAR` |
-| Docker not running | Start Docker Desktop |
-
-## License
-
-MIT
+---
+**Disclaimer**: This is an AI research tool. Always cross-reference financial data with official SEC sources.
