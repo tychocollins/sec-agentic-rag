@@ -4,16 +4,19 @@ An enterprise-grade, agentic RAG pipeline for deep analysis of SEC 10-K filings.
 
 ## 🚀 Key Technical Achievements
 
-### 🏎️ Parallel Multi-Agent Search
-Unlike standard RAG pipelines that fetch context sequentially, this system implements a **Parallel Multi-Agent Search** architecture. 
-- **Simultaneous Retrieval**: For complex comparison queries (e.g., "Apple vs Tesla"), the backend triggers independent search agents for each entity concurrently using `asyncio.gather`.
-- **Latency Reduction**: This approach cuts total processing time by up to 50% for multi-ticker analysis by eliminating sequential I/O bottlenecks.
+### ⚡ Real-Time Response Streaming (SSE)
+Unlike traditional RAG systems that make the user wait for the entire response to be generated, this system implements **Server-Sent Events (SSE)**.
+- **Incremental Tokens**: The backend streams tokens to the Flutter frontend in real-time. The result is a UI that feels alive and responsive, even for complex reasoning tasks.
+- **Metadata Push**: Ticker metadata, planned steps, and citations are pushed to the UI immediately before the answer begins streaming.
 
-### 📈 Non-Linear "Deep Work" Progress UI
-To manage user expectations during long-running, multi-step agentic reasoning (which can take up to 5 minutes), we developed a custom **Non-Linear Progress Indicator** in Flutter.
-- **Psychological Speed**: The progress bar jumps to 30% in the first 5 seconds to provide immediate feedback.
-- **Expected Delay**: It then moves into a "crawl" state (30% to 90% over 3 minutes) during heavy cross-analysis blocks.
-- **Sticky Status States**: Instead of looping animations, the UI displays discrete reasoning steps (1-7) that "stick" during processing, providing a transparent look into the Analyst's effort.
+### 🏎️ Parallel Multi-Agent Search
+This system implements a high-concurrency **Parallel Search** architecture using `asyncio.gather`.
+- **Latency Reduction**: For multi-ticker queries, independent search agents fetch SEC filings simultaneously, cutting total data-retrieval time by up to **50%**.
+
+### 📉 Non-Linear "Expectation Management" UI
+A custom **Non-Linear Progress Indicator** synchronizes with the agent's work phases.
+- **Psychological Speed**: The progress bar jumps to 30% in the first 5 seconds.
+- **Sticky Status Updates**: Discrete reasoning steps (1-7) provide transparency into the Analyst's effort during deep cross-analysis.
 
 ---
 
@@ -21,10 +24,11 @@ To manage user expectations during long-running, multi-step agentic reasoning (w
 
 | Feature | Technical Implementation |
 | :--- | :--- |
+| **Real-Time SSE** | Token-by-token streaming using FastAPI `StreamingResponse` and Dart `Stream`. |
+| **Token Optimization** | Throttled retrieval (Top 3 clips/company) to ensure high-speed grounding and avoid API timeouts. |
 | **Auto-Ingestion** | Real-time downloading and processing of 10-K filings from SEC EDGAR. |
 | **Hybrid Search** | Reciprocal Rank Fusion (RRF) combining Vector Search with Keyword (`tsvector`) ranking. |
-| **Financial Boosting** | Heuristic re-ranking that prioritizes chunks containing financial tables and dollar-denominated metrics. |
-| **Multi-Agent Reasoning** | A pipeline of **Planner**, **Searcher**, and **Reviewer** agents ensuring grounded, verified answers. |
+| **Multi-Agent Flow** | A pipeline of **Planner**, **Analyst**, and **Reviewer** agents ensuring grounded, verified answers. |
 
 ---
 
@@ -32,21 +36,23 @@ To manage user expectations during long-running, multi-step agentic reasoning (w
 
 ```mermaid
 graph TD
-    UI[Flutter Professional UI] --> API[FastAPI Orchestrator]
-    API --> Ingest[Ingestion Service]
-    API --> Planner[Planner Agent]
+    UI[Flutter Professional UI] -- POST /analyze --> API[FastAPI Orchestrator]
+    API -- Metadata Event --> UI
     
-    subgraph "Parallel Search Core"
-        Planner --> S1[Search Agent: Ticker A]
-        Planner --> S2[Search Agent: Ticker B]
+    subgraph "Parallel Retrieval Core"
+        API --> S1[Search Agent: Ticker A]
+        API --> S2[Search Agent: Ticker B]
         S1 --> DB[(PostgreSQL + pgvector)]
         S2 --> DB
     end
     
     DB --> Analyst[Analyst Agent]
     Analyst --> Reviewer[Reviewer Agent]
-    Reviewer --> API
-    API --> UI
+    
+    subgraph "Streaming Feedback"
+        Reviewer -- SSE Token Stream --> API
+        API -- data: token --> UI
+    end
 ```
 
 ## 🛠️ Installation & Setup
