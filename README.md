@@ -15,7 +15,8 @@ An enterprise-grade, agentic RAG pipeline for deep analysis of SEC 10-K filings.
 
 # Quick Facts
 
-<img src="https://github.com/user-attachments/assets/2ec9ee47-c73c-42f0-904d-48fdb4c9e387" width="800" height="600" alt="Quick Facts Sidebar" style="object-fit: contain;">
+<img width="267" height="569" alt="Fact Bar" src="https://github.com/user-attachments/assets/0c28e237-c978-4a1c-b614-730a160fc7c6" />
+
 
 ### 🔍 Citations
 <img src="https://github.com/user-attachments/assets/55b78e88-9377-42a6-ab0d-df59ba9a10da" width="600" alt="Grounding and Citations">
