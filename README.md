@@ -2,6 +2,11 @@
 
 An enterprise-grade, agentic RAG pipeline for deep analysis of SEC 10-K filings. Built with **Gemini**, **PostgreSQL + pgvector**, and **Flutter**, this system moves beyond simple retrieval to provide high-fidelity financial insights and multi-company comparisons.
 
+## GIF
+
+![media1](https://github.com/user-attachments/assets/0e6f59d7-025d-4a72-b672-9c13ce1ae80f)
+
+
 ## 🚀 Key Technical Achievements
 
 ### ⚡ Real-Time Response Streaming (SSE)
