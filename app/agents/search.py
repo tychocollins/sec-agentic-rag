@@ -29,11 +29,18 @@ class SearchAgent:
         if len(large_numbers) >= 3:
             boost += 0.4
         
-        # Boost for income statement keywords
+        # Boost for income statement keywords and section headers
         income_keywords = ['net income', 'net sales', 'total revenue', 'operating income', 'gross profit', 'earnings per share', 'diluted']
         for kw in income_keywords:
             if kw in text_content.lower():
                 boost += 0.2
+                break
+        
+        # Section header prioritization for higher precision extraction
+        section_headers = ['consolidated statements of operations', 'summary of financial data', 'item 8. financial statements']
+        for header in section_headers:
+            if header in text_content.lower():
+                boost += 0.5
                 break
         
         return boost

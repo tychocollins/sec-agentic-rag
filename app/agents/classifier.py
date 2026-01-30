@@ -8,9 +8,23 @@ class ClassifierAgent:
 
     async def classify(self, user_input: str) -> dict:
         import asyncio
+        import re
         from google.api_core import exceptions
         
         current_year = datetime.now().year
+        q_upper = user_input.upper()
+        
+        # Fast-track for core tickers and years
+        found_tickers = []
+        if "APPLE" in q_upper or "AAPL" in q_upper: found_tickers.append("AAPL")
+        if "MICROSOFT" in q_upper or "MSFT" in q_upper: found_tickers.append("MSFT")
+        if "TESLA" in q_upper or "TSLA" in q_upper: found_tickers.append("TSLA")
+        
+        years = re.findall(r'20\d{2}', user_input)
+        
+        if found_tickers and years:
+            return {"tickers": found_tickers, "year": int(years[0])}
+            
         prompt = f"""
         You are a financial query parser.
         Your job is to extract the Stock Ticker(s) (e.g., AAPL, GOOGL) and the Fiscal Year from the user's question.

@@ -257,6 +257,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               }
             }
           });
+        } else if (event['type'] == 'citations' && agentMsgIndex != null) {
+          setState(() {
+            _messages[agentMsgIndex!]['citations'] = List<String>.from(event['context'] ?? []);
+          });
+        } else if (event['type'] == 'status') {
+          // Update status indicator, do NOT append to answer
+          // Using the existing _statusSteps logic or a new transient status field
+          // For now, let's just log it or update a status text if we had one in the bubble
+          // The user wants 'outright' answer, so we just ignore appending it to the text.
         } else if (event['type'] == 'token' && agentMsgIndex != null) {
           setState(() {
             _messages[agentMsgIndex!]['answer'] += event['text'];
