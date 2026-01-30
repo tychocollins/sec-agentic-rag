@@ -11,13 +11,13 @@ An enterprise-grade, agentic RAG pipeline for deep analysis of SEC 10-K filings.
 ## Screenshots
 
 ### 🖥️ Interface
-<img src="https://github.com/user-attachments/assets/0aa3d436-1c9b-43d1-bbf0-3fdacc141034" width="800" alt="Full Interface View">
+<img src="https://github.com/user-attachments/assets/0aa3d436-1c9b-43d1-bbf0-3fdacc141034" width="400" alt="Full Interface View">
 
 ### 📊 Quick Facts
-<img src="https://github.com/user-attachments/assets/2ec9ee47-c73c-42f0-904d-48fdb4c9e387" width="800" alt="Quick Facts Sidebar">
+<img src="https://github.com/user-attachments/assets/2ec9ee47-c73c-42f0-904d-48fdb4c9e387" width="400" alt="Quick Facts Sidebar">
 
 ### 🔍 Citations
-<img src="https://github.com/user-attachments/assets/55b78e88-9377-42a6-ab0d-df59ba9a10da" width="800" alt="Grounding and Citations">
+<img src="https://github.com/user-attachments/assets/55b78e88-9377-42a6-ab0d-df59ba9a10da" width="400" alt="Grounding and Citations">
 
 
 
