@@ -136,4 +136,14 @@ Visit **[localhost:3000](http://localhost:3000)** to start analyzing.
 | Google | GOOGL | ✅ $73,795M net income |
 
 ---
+
+## 📄 License & Copyright
+
+Copyright (c) 2026 Tycho. **All Rights Reserved.**
+
+This repository and its contents are proprietary. No part of this project may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without the express written permission of the author. 
+
+Recruiters and hiring managers are granted permission to view the source code and documentation for the purpose of professional evaluation only.
+
+---
 **Disclaimer**: This is an AI research tool. Always cross-reference financial data with official SEC sources.
